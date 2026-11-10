@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scam SMS Detector · Deekshith P</title>
+<meta name="description" content="Paste a text message and an NLP model trained on 5,169 real SMS messages tells you if it looks like a scam, and which words gave it away.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Figtree:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<script src="assets/theme.js"></script>
+<style>
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+textarea { width: 100%; min-height: 150px; resize: vertical; font: 400 16px/1.55 var(--body); padding: 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); }
+textarea:focus { outline: none; border-color: var(--sea); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chips button { padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--bg); color: var(--fg); font: 500 13px var(--body); cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chips button:hover { border-color: var(--sea); }
+.chips .k { font: 400 11px var(--mono); color: var(--muted); width: 100%; margin-top: 6px; }
+.verdict { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pill { padding: 6px 14px; border-radius: 999px; font: 600 15px var(--body); }
+.pill.scam { background: var(--pop); color: #fff; }
+.pill.safe { background: var(--green); color: var(--bg); }
+.pill.unsure { background: var(--bg); color: var(--fg); border: 1.5px solid var(--muted); }
+.pill.none { background: var(--bg); color: var(--muted); }
+#prob { font: 700 52px/1 var(--display); letter-spacing: -0.03em; }
+.meter { position: relative; height: 10px; border-radius: 5px; margin-top: 14px; background: linear-gradient(90deg, var(--green), var(--line) 50%, var(--pop)); }
+.meter i { position: absolute; top: -5px; width: 4px; height: 20px; border-radius: 2px; background: var(--fg); transform: translateX(-2px); transition: left .2s ease; }
+.scale { display: flex; justify-content: space-between; font: 400 11px var(--mono); color: var(--muted); margin-top: 6px; }
+.marked { margin-top: 18px; padding: 14px; border-radius: 12px; background: var(--bg); line-height: 1.9; font-size: 15px; overflow-wrap: anywhere; min-height: 3em; }
+.marked mark { border-radius: 4px; padding: 1px 2px; color: var(--fg); }
+.signals { display: grid; gap: 6px; margin-top: 14px; }
+.signals div { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 48px; gap: 10px; align-items: center; font: 400 13px var(--mono); }
+.signals span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.signals i { display: block; height: 8px; border-radius: 4px; }
+.signals span:last-child { text-align: right; color: var(--muted); }
+.sec { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 20px; align-items: start; }
+.big { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-top: 8px; }
+.big b { display: block; font: 500 26px var(--mono); color: var(--sea); }
+.big span { font-size: 13px; color: var(--muted); }
+.cm { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); gap: 6px; margin-top: 16px; font-size: 12px; }
+.cm .h { font: 400 11px var(--mono); color: var(--muted); }
+.cm .rh { font: 400 11px var(--mono); color: var(--muted); align-self: center; text-align: right; padding-right: 4px; }
+.cm .c { background: var(--bg); border-radius: 8px; padding: 8px 10px; font: 500 18px var(--mono); }
+.cm .g { color: var(--green); } .cm .x { color: var(--warn); }
+.words { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.words span { font: 400 12px var(--mono); padding: 3px 8px; border-radius: 6px; background: var(--bg); }
+.cv { display: grid; gap: 6px; margin-top: 10px; font-size: 13px; }
+.cv div { display: flex; justify-content: space-between; gap: 8px; }
+.cv b { font: 500 13px var(--mono); }
+.fails { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 13px; color: var(--muted); }
+.fails li { padding: 8px 10px; background: var(--bg); border-radius: 8px; overflow-wrap: anywhere; }
+.fails b { color: var(--fg); font-weight: 600; }
+pre { margin: 10px 0 0; padding: 14px; border-radius: 12px; background: #0F1A1B; color: #CFE3DE; font: 400 12.5px/1.6 var(--mono); overflow-x: auto; }
+.apigrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 20px; margin-top: 20px; align-items: start; }
+.small { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+@media (max-width: 900px) { .stage, .sec, .apigrid { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <a class="mark" href="https://deeku46.github.io/">deekshith<i>.</i></a>
+  <span style="display:flex;gap:16px;align-items:center"><a class="back" href="https://github.com/deeku46/scam-sms-detector" target="_blank" rel="noopener">source code &nearr;</a><button id="theme" type="button">night</button></span>
+</div></header>
+
+<main class="wrap">
+  <span class="eyebrow"><b></b>live project · natural language processing</span>
+  <h1>Is this message a scam? <em>See which words gave it away.</em></h1>
+  <p class="lede">An NLP model trained on 5,169 real text messages. Paste any SMS and it scores it as you type, highlighting the words that pushed it towards scam or safe. Nothing leaves your browser.</p>
+
+  <div class="stage">
+    <div class="card">
+      <label class="label" for="msg">message</label>
+      <textarea id="msg" style="margin-top:8px" spellcheck="false">Dear customer, your SBI account KYC has expired. Update now at http://sbi-kyc-update.in or your account will be blocked today.</textarea>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="card" aria-live="polite">
+      <div class="verdict"><div><div class="label">scam probability</div><div id="prob">–</div></div><span class="pill none" id="pill">type a message</span></div>
+      <div class="meter"><i id="needle" style="left:50%"></i></div>
+      <div class="scale"><span>safe</span><span>unsure</span><span>scam</span></div>
+      <div class="marked" id="marked"></div>
+      <div class="signals" id="signals"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="card">
+      <h2>Test results</h2>
+      <div class="big" id="big"></div>
+      <div class="cm" id="cm"></div>
+    </div>
+    <div class="card">
+      <h2>What it learned</h2>
+      <div class="label" style="margin-top:6px">strongest scam signals</div>
+      <div class="words" id="wSpam"></div>
+      <div class="label" style="margin-top:14px">strongest safe signals</div>
+      <div class="words" id="wHam"></div>
+      <div class="label" style="margin-top:14px">models compared (5-fold CV F1)</div>
+      <div class="cv" id="cv"></div>
+    </div>
+    <div class="card">
+      <h2>Where it fails</h2>
+      <p class="small" style="margin-top:0">Real mistakes from the test set.</p>
+      <ul class="fails" id="fails"></ul>
+      <p class="small">Known blind spot: genuine OTPs and bank alerts are rare in the training data, so they can score as borderline.</p>
+    </div>
+  </div>
+
+  <div class="apigrid">
+    <div class="card">
+      <h2>Ready for a bot</h2>
+      <p class="small" style="margin-top:0">The repo includes a FastAPI service around the same model. A WhatsApp, Telegram or email bot can send it any message and get back a score and the reasons.</p>
+    </div>
+    <div class="card">
+<pre>curl -X POST localhost:8000/check \
+  -d '{"text": "You won Rs 50,000. Call 9876543210 to claim"}'
+
+{"scam_probability": 0.9998, "is_scam": true,
+ "top_signals": [{"term": "_phone_", "weight": 2.718},
+                 {"term": "_money_", "weight": 1.887},
+                 {"term": "call _phone_", "weight": 1.585}]}</pre>
+    </div>
+  </div>
+
+  <section class="how">
+    <div><h3>The data</h3><p>The SMS Spam Collection (Almeida &amp; Hidalgo, UCI repository): 5,169 unique real messages, 653 of them spam. 80% for training, 20% held back and used once for the results above.</p></div>
+    <div><h3>The model</h3><p>Links, phone numbers, amounts and codes are replaced with tokens like <code>_url_</code> and <code>_phone_</code>, so the model learns the pattern rather than one number. Then TF-IDF over words and word pairs, and logistic regression with balanced class weights.</p></div>
+    <div><h3>Why this model</h3><p>Naive Bayes, logistic regression and a linear SVM all reached an F1 of about 0.96 in cross-validation. Logistic regression was kept because every word has a readable weight, which is what makes the highlighting possible.</p></div>
+  </section>
+</main>
+
+<footer><div class="wrap">Deekshith P · <a href="https://deeku46.github.io/">deeku46.github.io</a></div></footer>
+
+<script src="model.js"></script>
+<script>
+(function () {
+  var S = window.SMS, T = S.terms, M = S.metrics, $ = function (id) { return document.getElementById(id); };
+
+  /* --- same normalisation and tokenisation as training/normalise.py --- */
+  function normalise(t) {
+    t = t.toLowerCase();
+    t = t.replace(/(https?:\/\/\S+|www\.\S+|\b\S+\.(com|net|org|in|co\.uk|biz|info|ly)\b\S*)/g, ' _url_ ');
+    t = t.replace(/(£|\$|₹|rs\.?|inr)\s?\d[\d,]*(\.\d+)?/g, ' _money_ ');
+    t = t.replace(/\d[\d,]*(\.\d+)?\s?(£|\$|₹|rs|inr|pounds|rupees)/g, ' _money_ ');
+    t = t.replace(/\+?\d[\d\s-]{8,}\d/g, ' _phone_ ');
+    t = t.replace(/\b\d{4,6}\b/g, ' _code_ ');
+    t = t.replace(/\d+/g, ' _num_ ');
+    return t;
+  }
+  function tokens(t) { return t.match(/[\p{L}\p{N}_]{2,}/gu) || []; }
+  function score(text) {
+    var tk = tokens(normalise(text)), counts = {};
+    tk.forEach(function (w, i) { counts[w] = (counts[w] || 0) + 1; if (i) { var b = tk[i - 1] + ' ' + w; counts[b] = (counts[b] || 0) + 1; } });
+    var vals = {}, norm = 0;
+    Object.keys(counts).forEach(function (k) { if (T[k]) { var v = (1 + Math.log(counts[k])) * T[k][0]; vals[k] = v; norm += v * v; } });
+    norm = Math.sqrt(norm) || 1;
+    var z = S.bias, con = {};
+    Object.keys(vals).forEach(function (k) { var c = T[k][1] * vals[k] / norm; con[k] = c; z += c; });
+    return { p: 1 / (1 + Math.exp(-z)), con: con };
+  }
+  window.__score = score;
+
+  /* --- highlight: map contributions back onto the original words --- */
+  var SPECIAL = [[/(https?:\/\/\S+|www\.\S+|\b\S+\.(com|net|org|in|co\.uk|biz|info|ly)\b\S*)/gi, '_url_'],
+                 [/(£|\$|₹|rs\.?|inr)\s?\d[\d,]*(\.\d+)?/gi, '_money_'], [/\d[\d,]*(\.\d+)?\s?(£|\$|₹|rs|inr|pounds|rupees)/gi, '_money_'],
+                 [/\+?\d[\d\s-]{8,}\d/g, '_phone_'], [/\b\d{4,6}\b/g, '_code_']];
+  function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function highlight(text, con) {
+    var spans = [];
+    SPECIAL.forEach(function (r) {
+      text.replace(r[0], function (m) {
+        var off = arguments[arguments.length - 2];
+        if (!spans.some(function (s) { return off < s[1] && off + m.length > s[0]; })) spans.push([off, off + m.length, r[1]]);
+        return m;
+      });
+    });
+    var wr = /[\p{L}\p{N}_]{2,}/gu, m;
+    while ((m = wr.exec(text))) {
+      var a = m.index, b = a + m[0].length;
+      if (!spans.some(function (s) { return a < s[1] && b > s[0]; })) spans.push([a, b, /\d/.test(m[0]) ? '_num_' : m[0].toLowerCase()]);
+    }
+    spans.sort(function (x, y) { return x[0] - y[0]; });
+    var w = spans.map(function (s, i) {
+      var c = con[s[2]] || 0;
+      if (i && con[spans[i - 1][2] + ' ' + s[2]]) c += con[spans[i - 1][2] + ' ' + s[2]] / 2;
+      if (i < spans.length - 1 && con[s[2] + ' ' + spans[i + 1][2]]) c += con[s[2] + ' ' + spans[i + 1][2]] / 2;
+      return c;
+    });
+    var mx = Math.max(0.3, Math.max.apply(null, w.map(Math.abs).concat([0]))), out = '', pos = 0;
+    spans.forEach(function (s, i) {
+      out += esc(text.slice(pos, s[0]));
+      var a = Math.min(1, Math.abs(w[i]) / mx);
+      out += a > 0.08 ? '<mark style="background:color-mix(in srgb, var(' + (w[i] > 0 ? '--pop' : '--green') + ') ' + Math.round(a * 70) + '%, transparent)">' + esc(text.slice(s[0], s[1])) + '</mark>' : esc(text.slice(s[0], s[1]));
+      pos = s[1];
+    });
+    return out + esc(text.slice(pos));
+  }
+
+  function run() {
+    var text = $('msg').value;
+    if (!text.trim()) { $('prob').textContent = '–'; $('pill').className = 'pill none'; $('pill').textContent = 'type a message'; $('marked').innerHTML = ''; $('signals').innerHTML = ''; return; }
+    var r = score(text), p = r.p;
+    $('prob').textContent = (p * 100 < 1 ? '<1' : p * 100 > 99 ? '>99' : Math.round(p * 100)) + '%';
+    var pill = $('pill');
+    if (p >= 0.65) { pill.className = 'pill scam'; pill.textContent = 'likely scam'; }
+    else if (p <= 0.35) { pill.className = 'pill safe'; pill.textContent = 'looks safe'; }
+    else { pill.className = 'pill unsure'; pill.textContent = 'unsure, be careful'; }
+    $('needle').style.left = (p * 100) + '%';
+    $('marked').innerHTML = highlight(text, r.con);
+    var top = Object.keys(r.con).sort(function (a, b) { return Math.abs(r.con[b]) - Math.abs(r.con[a]); }).slice(0, 6);
+    var mx = Math.max.apply(null, top.map(function (k) { return Math.abs(r.con[k]); }).concat([0.01]));
+    $('signals').innerHTML = top.map(function (k) {
+      var c = r.con[k];
+      return '<div><span>' + esc(k) + '</span><i style="width:' + (Math.abs(c) / mx * 100) + '%;background:var(' + (c > 0 ? '--pop' : '--green') + ')"></i><span>' + (c > 0 ? '+' : '') + c.toFixed(2) + '</span></div>';
+    }).join('');
+  }
+  $('msg').addEventListener('input', run);
+
+  /* --- example chips --- */
+  var mine = ['Congratulations! You have won Rs 25,00,000 in the KBC lottery. Call +91 98765 43210 to claim your prize',
+              'URGENT: your parcel is on hold. Pay Rs 25 redelivery fee at www.indiapost-track.com',
+              'Mom, I reached the hostel. Will call you after dinner'];
+  var html = '<span class="k">from the test set, never seen in training</span>';
+  S.examples.forEach(function (e, i) { html += '<button type="button" data-t="t' + i + '" title="' + esc(e.text) + '">' + esc(e.text.slice(0, 34)) + '…</button>'; });
+  html += '<span class="k">written for this demo, India-style</span>';
+  mine.forEach(function (t, i) { html += '<button type="button" data-t="m' + i + '" title="' + esc(t) + '">' + esc(t.slice(0, 34)) + '…</button>'; });
+  $('chips').innerHTML = html;
+  $('chips').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var k = b.dataset.t; $('msg').value = k[0] === 't' ? S.examples[+k.slice(1)].text : mine[+k.slice(1)]; run();
+  });
+
+  /* --- model card --- */
+  $('big').innerHTML = '<div><b>' + (M.precision * 100).toFixed(1) + '%</b><span>precision: flagged messages that really were spam</span></div>' +
+    '<div><b>' + (M.recall * 100).toFixed(1) + '%</b><span>recall: spam messages it caught</span></div>' +
+    '<div><b>' + M.f1.toFixed(3) + '</b><span>F1 score</span></div><div><b>' + M.auc.toFixed(3) + '</b><span>ROC-AUC</span></div>';
+  var c = M.cm;
+  $('cm').innerHTML = '<span></span><span class="h">said safe</span><span class="h">said scam</span><span class="rh">genuine</span><span class="c g">' + c[0][0] + '</span><span class="c x">' + c[0][1] + '</span><span class="rh">spam</span><span class="c x">' + c[1][0] + '</span><span class="c g">' + c[1][1] + '</span>';
+  $('wSpam').innerHTML = M.top_spam.slice(0, 12).map(function (w) { return '<span style="color:var(--pop)">' + esc(w) + '</span>'; }).join('');
+  $('wHam').innerHTML = M.top_ham.slice(0, 12).map(function (w) { return '<span style="color:var(--green)">' + esc(w) + '</span>'; }).join('');
+  $('cv').innerHTML = Object.keys(M.cv_f1).map(function (k) { return '<div><span>' + k + (k === 'Logistic regression' ? ' (shipped)' : '') + '</span><b>' + M.cv_f1[k].toFixed(3) + '</b></div>'; }).join('');
+  $('fails').innerHTML = M.missed.slice(0, 2).map(function (t) { return '<li><b>Missed scam:</b> ' + esc(t) + '</li>'; }).join('') +
+    [M.false_alarms[2], M.false_alarms[0]].filter(Boolean).map(function (t) { return '<li><b>False alarm:</b> ' + esc(t) + '</li>'; }).join('');
+  run();
+})();
+</script>
+</body>
+</html>
